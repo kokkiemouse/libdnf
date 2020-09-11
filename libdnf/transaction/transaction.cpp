@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "Transaction.hpp"
+#include "transaction.hpp"
 #include "CompsEnvironmentItem.hpp"
 #include "CompsGroupItem.hpp"
 #include "RPMItem.hpp"
@@ -45,8 +45,8 @@ Transaction::Transaction(libdnf::utils::SQLite3Ptr conn)
 bool
 Transaction::operator==(const Transaction &other) const
 {
-    return getId() == other.getId() && getDtBegin() == other.getDtBegin() &&
-           getRpmdbVersionBegin() == other.getRpmdbVersionBegin();
+    return get_id() == other.get_id() && get_dt_begin() == other.get_dt_begin() &&
+           get_rpmdb_version_begin() == other.get_rpmdb_version_begin();
 }
 
 /**
@@ -60,8 +60,8 @@ Transaction::operator==(const Transaction &other) const
 bool
 Transaction::operator<(const Transaction &other) const
 {
-    return getId() > other.getId() || getDtBegin() > other.getDtBegin() ||
-           getRpmdbVersionBegin() > other.getRpmdbVersionBegin();
+    return get_id() > other.get_id() || get_dt_begin() > other.get_dt_begin() ||
+           get_rpmdb_version_begin() > other.get_rpmdb_version_begin();
 }
 
 /**
@@ -71,8 +71,8 @@ Transaction::operator<(const Transaction &other) const
 bool
 Transaction::operator>(const Transaction &other) const
 {
-    return getId() < other.getId() || getDtBegin() < other.getDtBegin() ||
-           getRpmdbVersionBegin() < other.getRpmdbVersionBegin();
+    return get_id() < other.get_id() || get_dt_begin() < other.get_dt_begin() ||
+           get_rpmdb_version_begin() < other.get_rpmdb_version_begin();
 }
 
 void
@@ -97,12 +97,12 @@ Transaction::dbSelect(int64_t pk)
     query.step();
 
     id = pk;
-    dtBegin = query.get< int >("dt_begin");
-    dtEnd = query.get< int >("dt_end");
-    rpmdbVersionBegin = query.get< std::string >("rpmdb_version_begin");
-    rpmdbVersionEnd = query.get< std::string >("rpmdb_version_end");
+    dt_begin = query.get< int >("dt_begin");
+    dt_end = query.get< int >("dt_end");
+    rpmdb_version_begin = query.get< std::string >("rpmdb_version_begin");
+    rpmdb_version_end = query.get< std::string >("rpmdb_version_end");
     releasever = query.get< std::string >("releasever");
-    userId = query.get< uint32_t >("user_id");
+    user_id = query.get< uint32_t >("user_id");
     cmdline = query.get< std::string >("cmdline");
     state = static_cast< TransactionState >(query.get< int >("state"));
 }
@@ -118,13 +118,13 @@ Transaction::getItems()
         return items;
     }
     std::vector< TransactionItemPtr > result;
-    auto rpms = RPMItem::getTransactionItems(conn, getId());
+    auto rpms = RPMItem::getTransactionItems(conn, get_id());
     result.insert(result.end(), rpms.begin(), rpms.end());
 
-    auto comps_groups = CompsGroupItem::getTransactionItems(conn, getId());
+    auto comps_groups = CompsGroupItem::getTransactionItems(conn, get_id());
     result.insert(result.end(), comps_groups.begin(), comps_groups.end());
 
-    auto comps_environments = CompsEnvironmentItem::getTransactionItems(conn, getId());
+    auto comps_environments = CompsEnvironmentItem::getTransactionItems(conn, get_id());
     result.insert(result.end(), comps_environments.begin(), comps_environments.end());
 
     return result;
@@ -150,7 +150,7 @@ Transaction::getSoftwarePerformedWith() const
     std::set< std::shared_ptr< RPMItem > > software;
 
     libdnf::utils::SQLite3::Query query(*conn.get(), sql);
-    query.bindv(getId());
+    query.bindv(get_id());
 
     while (query.step() == libdnf::utils::SQLite3::Statement::StepResult::ROW) {
         software.insert(std::make_shared< RPMItem >(conn, query.get< int64_t >("item_id")));
@@ -174,7 +174,7 @@ Transaction::getConsoleOutput() const
             id
     )**";
     libdnf::utils::SQLite3::Query query(*conn, sql);
-    query.bindv(getId());
+    query.bindv(get_id());
     std::vector< std::pair< int, std::string > > result;
     while (query.step() == libdnf::utils::SQLite3::Statement::StepResult::ROW) {
         auto fileDescriptor = query.get< int >("file_descriptor");
@@ -209,7 +209,7 @@ Transaction::finish(TransactionState state)
         }
     }
 
-    setState(state);
+    set_state(state);
     dbUpdate();
 }
 
@@ -232,19 +232,19 @@ Transaction::dbInsert()
         "VALUES "
         "  (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     libdnf::utils::SQLite3::Statement query(*conn.get(), sql);
-    query.bindv(getDtBegin(),
-                getDtEnd(),
-                getRpmdbVersionBegin(),
-                getRpmdbVersionEnd(),
-                getReleasever(),
-                getUserId(),
-                getCmdline(),
-                static_cast< int >(getState()));
-    if (getId() > 0) {
-        query.bind(9, getId());
+    query.bindv(get_dt_begin(),
+                get_dt_end(),
+                get_rpmdb_version_begin(),
+                get_rpmdb_version_end(),
+                get_releasever(),
+                get_user_id(),
+                get_cmdline(),
+                static_cast< int >(get_state()));
+    if (get_id() > 0) {
+        query.bind(9, get_id());
     }
     query.step();
-    setId(conn->last_insert_rowid());
+    set_id(conn->last_insert_rowid());
 
     // add used software - has to be added at initialization state
     if (!softwarePerformedWith.empty()) {
@@ -266,7 +266,7 @@ Transaction::dbInsert()
             first = false;
             // save the item to create a database id
             software->save();
-            swQuery.bindv(getId(), software->getId());
+            swQuery.bindv(get_id(), software->getId());
             swQuery.step();
         }
     }
@@ -290,15 +290,15 @@ Transaction::dbUpdate()
         "WHERE "
         "  id = ?";
     libdnf::utils::SQLite3::Statement query(*conn.get(), sql);
-    query.bindv(getDtBegin(),
-                getDtEnd(),
-                getRpmdbVersionBegin(),
-                getRpmdbVersionEnd(),
-                getReleasever(),
-                getUserId(),
-                getCmdline(),
-                static_cast< int >(getState()),
-                getId());
+    query.bindv(get_dt_begin(),
+                get_dt_end(),
+                get_rpmdb_version_begin(),
+                get_rpmdb_version_end(),
+                get_releasever(),
+                get_user_id(),
+                get_cmdline(),
+                static_cast< int >(get_state()),
+                get_id());
     query.step();
 }
 
@@ -373,7 +373,7 @@ Transaction::addSoftwarePerformedWith(std::shared_ptr< RPMItem > software)
 void
 Transaction::addConsoleOutputLine(int fileDescriptor, const std::string &line)
 {
-    if (!getId()) {
+    if (!get_id()) {
         throw std::runtime_error(_("Can't add console output to unsaved transaction"));
     }
 
@@ -388,7 +388,7 @@ Transaction::addConsoleOutputLine(int fileDescriptor, const std::string &line)
             (?, ?, ?);
     )**";
     libdnf::utils::SQLite3::Statement query(*conn, sql);
-    query.bindv(getId(), fileDescriptor, line);
+    query.bindv(get_id(), fileDescriptor, line);
     query.step();
 }
 
