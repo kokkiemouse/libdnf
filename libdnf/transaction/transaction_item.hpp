@@ -28,6 +28,7 @@ along with libdnf.  If not, see <https://www.gnu.org/licenses/>.
 #include "libdnf/utils/sqlite3/sqlite3.hpp"
 
 namespace libdnf::transaction {
+class Transaction;
 class TransactionItem;
 typedef std::shared_ptr< TransactionItem > TransactionItemPtr;
 }
@@ -37,7 +38,6 @@ typedef std::shared_ptr< TransactionItem > TransactionItemPtr;
 #include "CompsGroupItem.hpp"
 #include "RPMItem.hpp"
 #include "Repo.hpp"
-#include "transaction.hpp"
 #include "Types.hpp"
 
 

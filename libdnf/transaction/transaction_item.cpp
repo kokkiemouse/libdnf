@@ -20,6 +20,7 @@
 
 #include "libdnf/utils/bgettext/bgettext-lib.h"
 
+#include "transaction.hpp"
 #include "transaction_item.hpp"
 #include "Types.hpp"
 #include "transaction_item_action.hpp"
