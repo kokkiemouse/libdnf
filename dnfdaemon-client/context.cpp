@@ -30,24 +30,39 @@ namespace dnfdaemon::client {
 
 
 void Context::init_session() {
-    // connect to d-bus
-    connection = sdbus::createSystemBusConnection();
-    connection->enterEventLoopAsync();
-
     // open dnfdaemon-server session
-    auto session_manager_proxy = sdbus::createProxy(*connection, dnfdaemon::DBUS_NAME, dnfdaemon::DBUS_OBJECT_PATH);
+    auto session_manager_proxy = sdbus::createProxy(connection, dnfdaemon::DBUS_NAME, dnfdaemon::DBUS_OBJECT_PATH);
     session_manager_proxy->finishRegistration();
     // TODO(mblaha): fill the config from command line arguments
     dnfdaemon::KeyValueMap cfg = {};
     session_manager_proxy->callMethod("open_session").onInterface(dnfdaemon::INTERFACE_SESSION_MANAGER).withArguments(cfg).storeResultsTo(session_object_path);
 
-    session_proxy = sdbus::createProxy(*connection, dnfdaemon::DBUS_NAME, session_object_path);
+    session_proxy = sdbus::createProxy(connection, dnfdaemon::DBUS_NAME, session_object_path);
+    session_proxy->uponSignal(dnfdaemon::SIGNAL_REPOSITORIES_READY).onInterface(dnfdaemon::INTERFACE_BASE).call([this](const bool & result) {
+        this->on_repositories_ready(result);
+    });
     session_proxy->finishRegistration();
 }
 
 
-void Context::load_rpm_repos([[maybe_unused]] libdnf::rpm::RepoSet & repos, [[maybe_unused]] libdnf::rpm::SolvSack::LoadRepoFlags flags) {
-    std::cout << "Updating repositories metadata and load them:" << std::endl;
+void Context::on_repositories_ready(const bool & result) {
+    if (result) {
+        repositories_status = RepoStatus::READY;
+    } else {
+        repositories_status = RepoStatus::ERROR;
+    }
+}
+
+
+Context::RepoStatus Context::wait_for_repos() {
+    if (repositories_status == RepoStatus::NOT_READY) {
+        repositories_status = RepoStatus::PENDING;
+        session_proxy->callMethod("read_all_repos").onInterface(dnfdaemon::INTERFACE_BASE);
+    }
+    while (repositories_status == RepoStatus::PENDING) {
+        sleep(1);
+    }
+    return repositories_status;
 }
 
 }  // namespace dnfdaemon::client
