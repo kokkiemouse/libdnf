@@ -50,4 +50,4 @@ target_link_libraries(_hawkeymodule ${PYTHON_LIBRARY})
 install(FILES __init__.py DESTINATION ${PYTHON_INSTALL_DIR}/hawkey)
 install(TARGETS _hawkeymodule LIBRARY DESTINATION ${PYTHON_INSTALL_DIR}/hawkey)
 
-add_subdirectory(tests)
+#add_subdirectory(tests)
