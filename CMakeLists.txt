@@ -178,8 +178,8 @@ endif()
 
 
 # build tests
-enable_testing()
-add_subdirectory(tests)
+#enable_testing()
+#add_subdirectory(tests)
 if(WITH_BINDINGS)
     add_subdirectory(python/hawkey)
 endif()
